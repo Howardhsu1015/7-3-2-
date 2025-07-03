@@ -1,28 +1,23 @@
-def get_relevant_passage(query, db, n_results=3):
+def make_rag_prompt(query, relevant_passages):
     """
-    從 ChromaDB 中根據 query 查詢最相關的文字段落。
+    建立 Gemini 使用的 RAG prompt，整合檢索段落與使用者問題。
 
     參數:
-        query (str): 使用者輸入的問題或查詢字串
-        db (chromadb.Client): Chroma 資料庫物件
-        n_results (int): 要回傳的最相似段落數量
+        query (str): 使用者輸入的問題
+        relevant_passages (List[str]): 與問題最相關的段落列表
 
     回傳:
-        List[str]: 最相關的文字段落清單
+        str: 最終送給 LLM 的完整提示語
     """
-    try:
-        # ⚠️ 假設你只有一個 collection（例如叫 pdf_chunks）
-        collection = db.get_collection(name="pdf_chunks")
+    # 將相關段落合併成單一字串
+    context = "\n\n".join(relevant_passages)
 
-        results = collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
+    # 組合成 Prompt 格式
+    prompt = (
+        f"根據以下資訊，請詳細回答問題：\n\n"
+        f"{context}\n\n"
+        f"問題：{query}"
+    )
 
-        # 取出文件內容
-        relevant_texts = results["documents"][0]
-        return relevant_texts
+    return prompt
 
-    except Exception as e:
-        print(f"❌ 查詢發生錯誤：{e}")
-        return []
