@@ -1,34 +1,28 @@
-import chromadb
-import os
-
-def create_chroma_db(documents, path, name):
+def get_relevant_passage(query, db, n_results=3):
     """
-    建立 Chroma 向量資料庫並加入文件嵌入向量。
+    從 ChromaDB 中根據 query 查詢最相關的文字段落。
 
     參數:
-        documents (List[str]): 切割後的文本清單
-        path (str): 資料庫儲存路徑
-        name (str): collection 名稱
+        query (str): 使用者輸入的問題或查詢字串
+        db (chromadb.Client): Chroma 資料庫物件
+        n_results (int): 要回傳的最相似段落數量
 
     回傳:
-        chromadb.Client: 可進行查詢的資料庫物件
+        List[str]: 最相關的文字段落清單
     """
-    # 初始化 ChromaDB
-    if not os.path.exists(path):
-        os.makedirs(path)
+    try:
+        # ⚠️ 假設你只有一個 collection（例如叫 pdf_chunks）
+        collection = db.get_collection(name="pdf_chunks")
 
-    client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=path))
+        results = collection.query(
+            query_texts=[query],
+            n_results=n_results
+        )
 
-    # 建立或取得 collection
-    embed_fn = GeminiEmbeddingFunction()
-    collection = client.get_or_create_collection(name=name, embedding_function=embed_fn)
+        # 取出文件內容
+        relevant_texts = results["documents"][0]
+        return relevant_texts
 
-    # 為每段文字建立唯一 ID
-    ids = [f"doc_{i}" for i in range(len(documents))]
-
-    # 加入至資料庫
-    collection.add(documents=documents, ids=ids)
-
-    print(f"✅ 已加入 {len(documents)} 筆文件至 Chroma 資料庫：{name}")
-    return client
-
+    except Exception as e:
+        print(f"❌ 查詢發生錯誤：{e}")
+        return []
